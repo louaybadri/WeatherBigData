@@ -1,4 +1,4 @@
-
+require('dotenv').config()
 const mongoose = require('mongoose');
 
 const StreamSchema = new mongoose.Schema({
@@ -9,4 +9,4 @@ const StreamSchema = new mongoose.Schema({
 
 
 
-module.exports = mongoose.model('weather_stream', StreamSchema, process.env.MONGO_COLLECTION);
+module.exports = mongoose.model(process.env.MONGO_COLLECTION_STREAM, StreamSchema, process.env.MONGO_COLLECTION_STREAM);

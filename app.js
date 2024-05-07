@@ -3,7 +3,8 @@ const http = require('http');
 const socketIo = require('socket.io');
 const mongoose = require('mongoose');
 const WeatherStream = require('./schemas/stream.schema');
-
+const BatchSchema = require('./schemas/batch_schema');
+require('dotenv').config()
 const cors = require('cors');
 const app = express();
 app.use(cors());
@@ -27,7 +28,8 @@ io.sockets.on('connection', function (socket) {
 // enable cors
 
 
-mongoose.connect('mongodb+srv://admin:1234@cluster0.iunwbji.mongodb.net/bigdata', {
+// mongoose.connect(process.env.MONGO_URI, {
+mongoose.connect(process.env.MONGO_URI, {
     useNewUrlParser: true,
     useUnifiedTopology: true,
 }).then(() => {
@@ -40,19 +42,27 @@ mongoose.connect('mongodb+srv://admin:1234@cluster0.iunwbji.mongodb.net/bigdata'
 
 async function watchData() {
 
-    const data = await WeatherStream.watch();
-    data.on('change', (change) => {
-        io.emit('dataChange', change);
-    });
+    try {
+        const data = await WeatherStream.watch();
+        data.on('change', (change) => {
+            console.log("data changed at " + new Date());
+            io.emit('dataChange', change);
+        });
 
+    } catch (error) {
+
+        io.emit('dataChange', error);
+    };
 }
+
+
 
 async function findLastData() {
     const data = await WeatherStream.findOne({}, {}, { sort: { latest_date: -1 } });
     return data;
 }
-async function getAll() {
-    const data = await WeatherStream.find({});
+async function getAll(isStream) {
+    const data = isStream ? await WeatherStream.find() : await BatchSchema.find();
     return data;
 }
 watchData();
@@ -66,9 +76,9 @@ app.get('/', async (req, res) => {
 });
 
 
-app.get('/all', async (req, res) => {
+app.get('/stream/all', async (req, res) => {
 
-    const data = await getAll()
+    const data = await getAll(true)
     if (data) {
         res.send({
             success: true,
@@ -82,6 +92,24 @@ app.get('/all', async (req, res) => {
     }
 
 });
+
+app.get('/batch/all', async (req, res) => {
+
+    const data = await getAll(false)
+    if (data) {
+        res.send({
+            success: true,
+            value: data
+        });
+    }
+    else {
+        res.send({
+            success: false
+        });
+    }
+
+});
+
 
 server.listen(3005, () => {
     console.log('Server is running on port 3000');
